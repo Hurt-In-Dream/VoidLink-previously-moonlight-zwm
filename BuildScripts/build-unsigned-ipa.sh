@@ -33,6 +33,25 @@ if codesign -d "$app" >/dev/null 2>&1; then
 fi
 
 mkdir -p "$build_dir/ipa/Payload"
-ditto "$app" "$build_dir/ipa/Payload/VoidLink.app"
+payload_app="$build_dir/ipa/Payload/VoidLink.app"
+ditto "$app" "$payload_app"
+
+# 仅移除打包副本中第三方框架的签名，保留源码和归档。
+shopt -s nullglob
+for framework in "$payload_app"/Frameworks/*.framework; do
+  framework_executable=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$framework/Info.plist")
+  xcrun lipo "$framework/$framework_executable" -verify_arch arm64
+  if codesign -d "$framework" >/dev/null 2>&1; then
+    codesign --remove-signature "$framework"
+  fi
+  if [[ -d "$framework/_CodeSignature" ]]; then
+    rm -r -- "$framework/_CodeSignature"
+  fi
+  if codesign -d "$framework" >/dev/null 2>&1; then
+    printf '动态框架仍包含代码签名：%s\n' "$framework" >&2
+    exit 1
+  fi
+done
+
 ditto -c -k --keepParent --norsrc "$build_dir/ipa/Payload" "$build_dir/VoidLink-unsigned.ipa"
 python3 BuildScripts/verify-ipa.py "$build_dir/VoidLink-unsigned.ipa"
