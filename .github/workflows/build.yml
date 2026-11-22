@@ -1,10 +1,6 @@
 name: Build VoidLink unsigned IPA
 
-on:
-  workflow_dispatch:
-  push:
-    branches: [ Integration ]
-    paths: [ .github/workflows/build.yml ]
+on: [push]
 
 jobs:
   build:
