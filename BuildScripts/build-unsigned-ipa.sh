@@ -26,7 +26,7 @@ xcodebuild archive \
 app="$build_dir/VoidLink.xcarchive/Products/Applications/VoidLink.app"
 plutil -lint "$app/Info.plist"
 executable=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$app/Info.plist")
-xcrun lipo -verify_arch arm64 "$app/$executable"
+xcrun lipo "$app/$executable" -verify_arch arm64
 if codesign -d "$app" >/dev/null 2>&1; then
   printf '%s\n' '应用包含代码签名，无法作为未签名 IPA 交付。' >&2
   exit 1
