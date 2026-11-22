@@ -1,50 +1,40 @@
 name: Build VoidLink unsigned IPA
 
-on: [push]
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build:
     name: Build unsigned IPA (iOS Release)
-    runs-on: macos-latest
+    runs-on: macos-26
+    timeout-minutes: 40
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          ref: Integration
           submodules: recursive
+          persist-credentials: false
 
       - name: Show Xcode version
         run: xcodebuild -version
 
-      - name: Build VoidLink without code signing
-        run: |
-          set -o pipefail
-          mkdir -p build
-          xcodebuild \
-            -project VoidLink.xcodeproj \
-            -target VoidLink \
-            -configuration Release \
-            -sdk iphoneos \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY="" \
-            CODE_SIGN_ENTITLEMENTS="" \
-            clean build 2>&1 | tee build/xcodebuild.log
-
-      - name: Package unsigned IPA
-        run: |
-          mkdir -p build/ipa/Payload
-          cp -R build/Release-iphoneos/VoidLink.app build/ipa/Payload/VoidLink.app
-          cd build/ipa
-          zip -q -r ../VoidLink-unsigned.ipa Payload
+      - name: Archive, package and verify unsigned IPA
+        run: bash BuildScripts/build-unsigned-ipa.sh
 
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
           name: VoidLink-unsigned-IPA
-          path: build/VoidLink-unsigned.ipa
+          path: |
+            build/VoidLink-unsigned.ipa
+            build/VoidLink-unsigned.ipa.sha256
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 30
 
       - name: Upload build log
         if: always()
